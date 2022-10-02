@@ -1,0 +1,308 @@
+echo "# Datathon" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/DalenRicks/Datathon.git
+git push -u origin main
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Oct  1 17:25:30 2022
+
+@author: Dalen Ricks
+"""
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+# Definitions
+def gestationLen(x): 
+    #00 Not applicable
+    #99 Not stated
+    return int(x[92:94])
+
+def Weight(x):
+    #01 >500g
+    #02 501 - 1000g
+    #03 1001 - 1500g
+    #04 1501 - 2000g
+    #05 2001 - 2500g
+    #06 2501 - 3000g
+    #07 3001 - 3500g
+    #08 3501 - 4000g
+    #09 4001 - 4500g
+    #10 4501 - 5000g
+    #11 5001 - 8165g
+    #12 Not Stated
+
+    return int(x[76:78])
+
+def WeightHighRes(x):
+    #grams directly coded 0227 -> 8165
+    #9999 = Not Stated
+    
+    return int(x[72:76])
+
+def Sex(x):
+    if x[34] == '1':
+        return "M"
+    elif x[34] == '2':
+        return "F"
+
+def BA_ND(x):
+    if x[53:55] != '55' and x[53:55] != '66' and x[53:55] != '77' and x[53:55] != '99':
+        return int(x[53:55])
+    
+    
+#Declare sorting arrays
+sex = []
+gestation = []
+weight = []
+#weightHR = []
+weightHighResRaw = []
+band = []
+
+#Sorting loop    
+f = open('US1969.dat', 'r')
+for s in tqdm(f):
+    #Expression for removing extraneous data
+    if gestationLen(s) != 0 and gestationLen(s) != 99 and Weight(s) != 12 and WeightHighRes != 9999:
+        
+        #Appending clean data to Sorting arrays
+        gestation.append(gestationLen(s))
+        sex.append(Sex(s))
+        weight.append(Weight(s))
+        weightHighResRaw.append(WeightHighRes(s))
+        band.append(BA_ND(s))
+f.close()
+ 
+
+
+#Establishing a dataframe
+df = pd.DataFrame()
+df["Sex"] = sex
+df["Gestation"] = gestation
+df["Weight"] = weight
+df["WeightHighResRaw"] = weightHighResRaw
+df["BAND"] = band
+
+
+Matrix = np.zeros((df.Weight.max()+1, df.Gestation.max()+1))
+for pair in df[["Weight", "Gestation"]].to_numpy():
+    Matrix[pair[0],pair[1]] += 1
+plt.matshow(Matrix)
+plt.colorbar()
+plt.title("2D Representation of Weight and Gestation Period")
+
+#Plotting the dataframe 
+plt.figure(figsize = (16,8))
+figure, axis = plt.subplots(2,1,figsize=(20,10))
+
+#Sex vs Gestation Period
+axis[0].hist([df[df['Sex']=='F']['Gestation'], df[df['Sex']=='M']['Gestation']],
+          bins = df['Gestation'].unique().shape[0], label=["Female","Male"]);
+axis[0].legend()
+axis[0].set_title("Sex (#of people) vs Gestation Period (weeks)")
+
+#Relationship between Weight and Gestation Period
+axis[1].plot(df["Gestation"], df["WeightHighResRaw"], ".",label="Weight");
+axis[1].set_title("Weight (g) vs Gestation Period (weeks)")
+
+#Plotting Regression Line
+a, b = np.polyfit(df["Gestation"], df["WeightHighResRaw"], 1)
+axis[1].plot(df["Gestation"], a*df["Gestation"]+b, ".-", label="LSR",)
+axis[1].legend()
+plt.show()
+
+#Relationship between BAND and Weight
+df.boxplot('WeightHighResRaw', 'BAND', figsize=(16,8))
+
+#Generating Texas Specific Data
+
+#Definitions
+def isInTexas(x):
+    if x[25:27] == '74':
+        return True
+    else:
+        return False
+
+def attend(x):
+    if x[35] == '1':
+        return "Medical In Hospital"
+    elif x[35] == '2':
+        return "Medical Out Hospital"
+    elif x[35] == '3':
+        return "Midwife out Hospital"
+    elif x[35] == '4':
+        return "Other, Out Hospital"
+
+def mom_edu(x):
+        return int(x[97:99])
+
+def dad_edu(x):
+        return int(x[102:104])
+
+def child_race(x):
+    if x[38] == '0':
+        return "Guamian"
+    elif x[38] == '1':
+        return "White"
+    elif x[38] == '2':
+        return "Negro"
+    elif x[38] == '3':
+        return "Indian"
+    elif x[38] == '4':
+        return "Chinese"
+    elif x[38] == '5':
+        return "Japanese"
+    elif x[38] == '6':
+        return "Hawaiian"
+    elif x[38] == '7':
+        return "Other Non-White"
+    elif x[38] == '8':
+        return "Filipino"
+
+def child_band(x):
+        return int(x[51:53])
+    
+def child_bd(x):
+        return int(x[55:57])
+    
+def fam_size(x):
+        return int(x[59])
+    
+def metro_data(x):
+    if x[24] != "Z":
+        if x[24] == '1': 
+            return "Metropolitan County"
+        elif x[24] == '2':
+            return "Non-metropolitan County"
+
+#Declare sorting array
+attendance = []
+childBD = []
+childBAND = []
+childDemo = []
+dadEdu = []
+momEdu = []
+famSize = []
+metro= []
+
+    
+#Sorting loop    
+f = open('US1969.dat', 'r')
+for s in tqdm(f):
+    #Expression for removing extraneous data 
+    if isInTexas(s) and fam_size(s) != 9:
+        if mom_edu(s) != 66 and mom_edu(s) != 77 and mom_edu(s) != 88 and mom_edu(s) != 99:
+            if dad_edu(s) != 66 and dad_edu(s) != 77 and dad_edu(s) != 88 and dad_edu(s) != 99:
+                if child_band(s) != 55 and child_band(s) != 66 and child_band(s) != 77 and child_band(s) != 99:
+                    if child_bd(s) != 55 and child_bd(s) != 66 and child_bd(s) != 77 and child_bd(s) != 99:
+                
+                        #Appending clean data to Sorting arrays
+                        attendance.append(attend(s))
+                        childBD.append(child_bd(s))
+                        childBAND.append(child_band(s))
+                        childDemo.append(child_race(s))
+                        dadEdu.append(dad_edu(s))
+                        momEdu.append(mom_edu(s))
+                        famSize.append(fam_size(s))
+                        metro.append(metro_data(s))
+f.close()
+
+#Setting up the Texas DataFrame
+TXdf = pd.DataFrame()
+TXdf["Attend"] = attendance
+TXdf["ChildBD"] = childBD
+TXdf["ChildBAND"] = childBAND
+TXdf["ChildDemo"] = childDemo
+TXdf["DadEdu"] = dadEdu
+TXdf["MomEdu"] = momEdu
+TXdf["FamSize"] = famSize
+TXdf["Metro"] = metro
+
+plt.figure(figsize = (16,8))
+figure, axis = plt.subplots(2,1,figsize=(20,10))
+
+
+#Relationship between Family Size and Parent Education
+axis[0].plot(TXdf['FamSize'], TXdf['MomEdu'], ".");
+axis[0].set_title("Mother's Education (yrs) vs Family Size (# of children)")
+
+# #Plotting Regression Line for Mother's Education
+c, d = np.polyfit(TXdf["FamSize"], TXdf["MomEdu"], 1)
+axis[0].plot(TXdf["FamSize"], c*TXdf["FamSize"]+d, ".-", label="LSR",)
+axis[0].legend()
+
+
+axis[1].plot(TXdf['FamSize'], TXdf['DadEdu'], ".");
+axis[1].set_title("Father's Education (yrs) vs Family Size (# of children)")
+
+# #Plotting Regression Line Father's Education
+e, f = np.polyfit(TXdf["FamSize"], TXdf["DadEdu"], 1)
+axis[1].plot(TXdf["FamSize"], e*TXdf["FamSize"]+f, ".-", label="LSR",)
+axis[1].legend()
+plt.show()
+
+#Child Mortality Focus
+
+plt.figure(figsize = (16,8))
+figure, axis = plt.subplots(2,1,figsize=(20,10))
+
+#Birth Attendance
+axis[0].bar(TXdf['Attend'], TXdf['ChildBAND']);
+axis[0].set_title("Children Born Who Then Died vs Birth Circumstances")
+
+
+axis[1].bar(TXdf['Attend'], TXdf['ChildBD']);
+axis[1].set_title("Children Born Dead vs Birth Circumstances")
+plt.show()
+###############################################################################
+plt.figure(figsize = (16,8))
+figure, axis = plt.subplots(2,2,figsize=(20,10))
+
+#Parent Education
+axis[0][0].plot(TXdf['DadEdu'], TXdf['ChildBAND'], ".");
+axis[0][0].set_title("Children Born Who Then Died vs Father's Education(yrs) ")
+g, h = np.polyfit(TXdf["DadEdu"], TXdf["ChildBAND"], 1)
+axis[0][0].plot(TXdf["DadEdu"], g*TXdf["DadEdu"]+h, ".-", label="LSR",)
+
+
+axis[1][0].plot(TXdf['MomEdu'], TXdf['ChildBAND'], ".");
+axis[1][0].set_title("Children Born Who Then Died vs Mother's Education (yrs)")
+j, k = np.polyfit(TXdf["MomEdu"], TXdf["ChildBAND"], 1)
+axis[1][0].plot(TXdf["MomEdu"], j*TXdf["MomEdu"]+k, ".-", label="LSR",)
+
+axis[0][1].plot(TXdf['DadEdu'], TXdf['ChildBD'], ".");
+axis[0][1].set_title("Children Born Dead vs Father's Education (yrs)")
+
+
+axis[1][1].plot(TXdf['MomEdu'], TXdf['ChildBD'], ".");
+axis[1][1].set_title("Children Born Dead vs Mother's Education (yrs)")
+plt.show()
+###############################################################################
+plt.figure(figsize = (16,8))
+figure, axis = plt.subplots(2,1,figsize=(20,10))
+
+#Birth Attendance
+axis[0].bar(TXdf['ChildDemo'], TXdf['ChildBAND']);
+axis[0].set_title("Children Born Who Then Died vs Child Race")
+
+
+axis[1].bar(TXdf['ChildDemo'], TXdf['ChildBD']);
+axis[1].set_title("Children Born Dead vs Child Race")
+plt.show()
+###############################################################################
+plt.figure(figsize = (16,8))
+figure, axis = plt.subplots(2,1,figsize=(20,10))
+
+#Locaiton
+axis[0].bar(TXdf['Metro'], TXdf['ChildBAND']);
+axis[0].set_title("Children Born Who Then Died vs Child Location")
+
+
+axis[1].bar(TXdf['Metro'], TXdf['ChildBD']);
+axis[1].set_title("Children Born Dead vs Child Location")
+plt.show()
